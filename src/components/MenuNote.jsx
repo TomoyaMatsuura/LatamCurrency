@@ -1,10 +1,5 @@
-import {
-  Menu,
-  MenuButton,
-  ChevronDownIcon,
-  MenuList,
-  MenuItem
-} from "@chakra-ui/react";
+import { Menu, MenuButton, MenuList, MenuItem } from "@chakra-ui/react";
+import { ChevronDownIcon } from "@chakra-ui/icons";
 
 export const MenuNote = () => {
   return (
