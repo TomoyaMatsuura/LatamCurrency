@@ -10,9 +10,12 @@ import (
 )
 
 type pageInfo struct {
-	StatusCode int    `json:"statusCode"`
-	URL        string `json:"url"`
-	Title      string `json:"title"`
+	Currency   string    `json:"currency"`
+	StatusCode int       `json:"statusCode"`
+	URL        string    `json:"url"`
+	Title      string    `json:"title"`
+	Month      []string  `json:"month"`
+	Rate       []float64 `json:"rate"`
 }
 
 func savePageJson(fName string, p *pageInfo) {
@@ -25,12 +28,6 @@ func savePageJson(fName string, p *pageInfo) {
 	defer file.Close()
 
 	// Dump json to the standard output
-	// err = json.NewEncoder(file).Encode(p)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// Dump json to the standard output
 	enc := json.NewEncoder(file)
 	enc.SetIndent("", "  ")
 	err = enc.Encode(p)
@@ -41,46 +38,69 @@ func savePageJson(fName string, p *pageInfo) {
 	// Struct to json
 	b, _ := json.MarshalIndent(p, "", "  ")
 	fmt.Println(string(b))
-	// fmt.Println(p)
 }
 
 func main() {
-	// Target URL
-	url := "https://cpp-learning.com"
+	currency := [8]string{"JPY", "BRL", "MXN", "ARS", "CLP", "PEN", "COP", "BOB"}
 
-	p := &pageInfo{}
+	for i := 0; i < len(currency); i++ {
+		url := "https://finance.yahoo.com/quote/USD" + currency[i] + "%3DX/history?interval=1mo&filter=history&frequency=1mo"
 
-	// Instantiate default collector
-	c := colly.NewCollector()
+		p := &pageInfo{
+			Currency: currency[i],
+		}
 
-	// Extract title element
-	c.OnHTML("title", func(e *colly.HTMLElement) {
-		p.Title = e.Text
-		fmt.Println(e.Text)
-	})
+		// Instantiate default collector
+		c := colly.NewCollector()
 
-	// Before making a request print "Visiting URL: https://XXX"
-	c.OnRequest(func(r *colly.Request) {
-		p.URL = r.URL.String()
-		fmt.Println("Visiting URL:", r.URL.String())
-	})
+		// Extract title element
+		c.OnHTML("title", func(e *colly.HTMLElement) {
+			p.Title = e.Text
+			fmt.Println(e.Text)
+		})
 
-	// After making a request extract status code
-	c.OnResponse(func(r *colly.Response) {
-		p.StatusCode = r.StatusCode
-		fmt.Println("StatusCode:", r.StatusCode)
-	})
-	c.OnError(func(r *colly.Response, err error) {
-		p.StatusCode = r.StatusCode
-		log.Println("error:", r.StatusCode, err)
-	})
+		c.OnHTML("table[data-test='historical-prices']", func(e *colly.HTMLElement) {
 
-	// Start scraping on https://XXX
-	c.Visit(url)
+			e.ForEach("tbody tr", func(_ int, el *colly.HTMLElement) {
+				date := el.ChildText("td:nth-child(1)")
+				rate := el.ChildText("td:nth-child(5)")
 
-	// Wait until threads are finished
-	c.Wait()
+				p.Month = append(p.Month, date)
 
-	// Save as JSON format
-	savePageJson("page.json", p)
+				// Parsing rate as a float64
+				var r float64
+				_, err := fmt.Sscanf(rate, "%f", &r)
+				if err != nil {
+					log.Println("Error parsing rate:", err)
+				}
+				p.Rate = append(p.Rate, r)
+			})
+		})
+
+		// Before making a request print "Visiting URL: https://XXX"
+		c.OnRequest(func(r *colly.Request) {
+			p.URL = r.URL.String()
+			fmt.Println("Visiting URL:", r.URL.String())
+		})
+
+		// After making a request extract status code
+		c.OnResponse(func(r *colly.Response) {
+			p.StatusCode = r.StatusCode
+			fmt.Println("StatusCode:", r.StatusCode)
+		})
+
+		c.OnError(func(r *colly.Response, err error) {
+			p.StatusCode = r.StatusCode
+			log.Println("error:", r.StatusCode, err)
+		})
+
+		// Start scraping on https://XXX
+		c.Visit(url)
+
+		// Wait until threads are finished
+		c.Wait()
+
+		// Save as JSON format
+		savePageJson(fmt.Sprintf("page_%s.json", currency[i]), p)
+	}
 }
