@@ -89,16 +89,19 @@ func main() {
 			})
 		})
 
+		// URLを出力
 		c.OnRequest(func(r *colly.Request) {
 			p.URL = r.URL.String()
 			fmt.Println("Visiting URL:", r.URL.String())
 		})
 
+		// Responseのステータスコードを取得
 		c.OnResponse(func(r *colly.Response) {
 			p.StatusCode = r.StatusCode
 			fmt.Println("StatusCode:", r.StatusCode)
 		})
 
+		// Response時にエラーがあった場合同様に出力
 		c.OnError(func(r *colly.Response, err error) {
 			p.StatusCode = r.StatusCode
 			log.Println("error:", r.StatusCode, err)
