@@ -18,14 +18,6 @@ import { PutExcelButton } from "./components/PutExcelButton";
 export default function App() {
   const affiliates = [MBR, MMX, MCL, MAR, MPE, MCO];
 
-  // const getRate = () => {
-  //   const headers = {"apikey: ow3SDCGVsK9bBh4lUJORRWSjvvEcFMEj"};
-  //   axios.get("https://api.apilayer.com/exchangerates_data/live?base=USD&symbols=BRL");
-  // }
-  // const A = () => {
-  //   axios.get("https://jsonplaceholder.typicode.com/users");
-  // };
-  // console.log(A());
   return (
     <ChakraProvider theme={theme}>
       <Header />
