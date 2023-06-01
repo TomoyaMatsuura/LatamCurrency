@@ -183,6 +183,6 @@ func main() {
 		c2.Wait()
 
 		savePageJson(fmt.Sprintf("rate_%s.json", currency[i]), p)
-		savePageJson(fmt.Sprintf("rate2_%s.json", currency[i]), p2)
+		savePageJson(fmt.Sprintf("rateLy_%s.json", currency[i]), p2)
 	}
 }
