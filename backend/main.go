@@ -19,7 +19,7 @@ type pageInfo struct {
 }
 
 func savePageJson(fName string, p *pageInfo) {
-	// Create json file
+	// JSONファイルの作成
 	file, err := os.Create(fName)
 	if err != nil {
 		log.Fatalf("Cannot create file %q: %s\n", fName, err)
@@ -27,7 +27,7 @@ func savePageJson(fName string, p *pageInfo) {
 	}
 	defer file.Close()
 
-	// Dump json to the standard output
+	// JSONの内容を標準出力
 	enc := json.NewEncoder(file)
 	enc.SetIndent("", "  ")
 	err = enc.Encode(p)
@@ -35,7 +35,7 @@ func savePageJson(fName string, p *pageInfo) {
 		log.Fatal(err)
 	}
 
-	// Struct to json
+	// JSONに出力(プレフィックスとインデントも設定)
 	b, _ := json.MarshalIndent(p, "", "  ")
 	fmt.Println(string(b))
 }
@@ -43,17 +43,19 @@ func savePageJson(fName string, p *pageInfo) {
 func main() {
 	currency := [8]string{"JPY", "BRL", "MXN", "ARS", "CLP", "PEN", "COP", "BOB"}
 
+	// 上の対象8通貨をループ
 	for i := 0; i < len(currency); i++ {
+
 		url := "https://finance.yahoo.com/quote/USD" + currency[i] + "%3DX/history?interval=1mo&filter=history&frequency=1mo"
 
 		p := &pageInfo{
 			Currency: currency[i],
 		}
 
-		// Instantiate default collector
+		// コントローラの作成
 		c := colly.NewCollector()
 
-		// Extract title element
+		// タイトル要素を取得
 		c.OnHTML("title", func(e *colly.HTMLElement) {
 			p.Title = e.Text
 			fmt.Println(e.Text)
