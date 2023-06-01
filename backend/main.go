@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/gocolly/colly/v2"
 )
@@ -18,6 +21,7 @@ type pageInfo struct {
 	Rate       []float64 `json:"rate"`
 }
 
+// JSONファイル作成用の関数
 func savePageJson(fName string, p *pageInfo) {
 	// JSONファイルの作成
 	file, err := os.Create(fName)
@@ -27,7 +31,7 @@ func savePageJson(fName string, p *pageInfo) {
 	}
 	defer file.Close()
 
-	// JSONの内容を標準出力
+	// エンコード
 	enc := json.NewEncoder(file)
 	enc.SetIndent("", "  ")
 	err = enc.Encode(p)
@@ -35,57 +39,61 @@ func savePageJson(fName string, p *pageInfo) {
 		log.Fatal(err)
 	}
 
-	// JSONに出力(プレフィックスとインデントも設定)
+	// JSON形式に変換
 	b, _ := json.MarshalIndent(p, "", "  ")
 	fmt.Println(string(b))
+}
+
+// 小数点下2桁に丸める関数
+func roundToFourDecimalPlaces(num float64) float64 {
+	return math.Round(num*100) / 100
 }
 
 func main() {
 	currency := [8]string{"JPY", "BRL", "MXN", "ARS", "CLP", "PEN", "COP", "BOB"}
 
-	// 上の対象8通貨をループ
+	// 対象8通貨をループ
 	for i := 0; i < len(currency); i++ {
-
 		url := "https://finance.yahoo.com/quote/USD" + currency[i] + "%3DX/history?interval=1mo&filter=history&frequency=1mo"
 
 		p := &pageInfo{
 			Currency: currency[i],
 		}
 
-		// コントローラの作成
+		// コントローラを作成
 		c := colly.NewCollector()
 
-		// タイトル要素を取得
+		// タイトルを取得
 		c.OnHTML("title", func(e *colly.HTMLElement) {
 			p.Title = e.Text
 			fmt.Println(e.Text)
 		})
 
+		// 為替を取得
 		c.OnHTML("table[data-test='historical-prices']", func(e *colly.HTMLElement) {
-
 			e.ForEach("tbody tr", func(_ int, el *colly.HTMLElement) {
 				date := el.ChildText("td:nth-child(1)")
 				rate := el.ChildText("td:nth-child(5)")
 
-				p.Month = append(p.Month, date)
+				month := strings.Split(date, " ")[0]
+				p.Month = append(p.Month, month)
 
-				// Parsing rate as a float64
-				var r float64
-				_, err := fmt.Sscanf(rate, "%f", &r)
+				// レートをfloat64として解析し、小数点以下4桁に丸める
+				r, err := strconv.ParseFloat(strings.ReplaceAll(rate, ",", ""), 64)
 				if err != nil {
 					log.Println("Error parsing rate:", err)
+					return
 				}
+				r = roundToFourDecimalPlaces(r)
 				p.Rate = append(p.Rate, r)
 			})
 		})
 
-		// Before making a request print "Visiting URL: https://XXX"
 		c.OnRequest(func(r *colly.Request) {
 			p.URL = r.URL.String()
 			fmt.Println("Visiting URL:", r.URL.String())
 		})
 
-		// After making a request extract status code
 		c.OnResponse(func(r *colly.Response) {
 			p.StatusCode = r.StatusCode
 			fmt.Println("StatusCode:", r.StatusCode)
@@ -96,13 +104,9 @@ func main() {
 			log.Println("error:", r.StatusCode, err)
 		})
 
-		// Start scraping on https://XXX
 		c.Visit(url)
-
-		// Wait until threads are finished
 		c.Wait()
 
-		// Save as JSON format
-		savePageJson(fmt.Sprintf("page_%s.json", currency[i]), p)
+		savePageJson(fmt.Sprintf("rate_%s.json", currency[i]), p)
 	}
 }
